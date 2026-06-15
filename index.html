@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Plateforme">
+<meta name="theme-color" content="#000000">
+<title>La Plateforme Politique</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+html,body{height:100%;width:100%;overflow:hidden;background:#000;font-family:'Helvetica Neue',Arial,sans-serif;touch-action:none;overscroll-behavior:none;}
+#app{position:fixed;inset:0;overflow:hidden;touch-action:none;}
+#bg{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 50% at 50% 40%,#0a1420 0%,#050608 55%,#000 100%);}
+#stars{position:fixed;inset:0;pointer-events:none;opacity:.4;background-image:radial-gradient(1px 1px at 15% 25%,#3a4a5a,transparent),radial-gradient(1px 1px at 65% 75%,#2a3a4a,transparent),radial-gradient(1px 1px at 82% 18%,#3a4a5a,transparent),radial-gradient(1px 1px at 38% 82%,#2a3a4a,transparent),radial-gradient(1px 1px at 92% 55%,#3a4a5a,transparent),radial-gradient(1px 1px at 50% 10%,#2a3a4a,transparent);background-size:300px 300px;}
+
+/* TOPBAR */
+#topbar{position:fixed;top:0;left:0;right:0;height:54px;z-index:1000;display:flex;align-items:center;gap:8px;padding:0 14px;background:linear-gradient(180deg,rgba(0,0,0,.95),rgba(0,0,0,.4));border-bottom:1px solid rgba(255,255,255,.06);}
+.t-logo{flex:1;}
+.t-logo-main{color:#fff;font-size:13px;font-weight:200;letter-spacing:5px;text-transform:uppercase;}
+.t-logo-sub{color:#5ad1d1;font-size:7px;letter-spacing:4px;margin-top:1px;}
+.tbtn{height:36px;padding:0 12px;border-radius:8px;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;border:none;transition:opacity .15s;white-space:nowrap;}
+.tbtn:active{opacity:.7;}
+
+/* CANVAS — le vrai conteneur tactile */
+#canvas{position:fixed;inset:0;top:54px;overflow:hidden;touch-action:none;}
+#world{position:absolute;top:0;left:0;will-change:transform;transform-origin:0 0;}
+#svg-layer{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
+
+/* NODES */
+.node{position:absolute;width:130px;display:flex;flex-direction:column;align-items:center;touch-action:none;}
+.orb{display:flex;align-items:center;justify-content:center;border-radius:50%;will-change:transform,box-shadow;}
+.n-label{margin-top:7px;font-size:9.5px;font-weight:300;letter-spacing:1.5px;text-align:center;text-transform:uppercase;color:#7a8a9a;pointer-events:none;}
+.n-sub{margin-top:2px;font-size:7.5px;letter-spacing:1px;text-align:center;pointer-events:none;}
+.node.focused .n-label{color:#fff;}
+
+/* FILTER PANEL */
+#fp{position:fixed;top:62px;left:12px;z-index:900;background:rgba(6,10,16,.95);border:1px solid #1a2733;border-radius:12px;padding:12px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);min-width:164px;display:none;}
+#fp.show{display:block;}
+.fp-h{color:#3a4a5a;font-size:7.5px;letter-spacing:3px;margin-bottom:8px;}
+.fp-row{display:flex;align-items:center;gap:9px;padding:5px 2px;cursor:pointer;}
+.fp-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.fp-lbl{color:#b8c8d8;font-size:10.5px;letter-spacing:.5px;}
+.fp-cnt{margin-left:auto;color:#3a4a5a;font-size:9px;}
+.fp-div{height:1px;background:#1a2733;margin:7px 0;}
+
+/* INFO PANEL */
+#info{position:fixed;right:0;top:54px;bottom:0;width:min(310px,86vw);z-index:950;background:linear-gradient(#080c12f8,#030508fb);border-left:1px solid #1a2733;padding:22px 18px;overflow-y:auto;transform:translateX(110%);transition:transform .28s cubic-bezier(.2,.8,.2,1);}
+#info.open{transform:translateX(0);}
+.i-x{position:absolute;top:14px;right:16px;color:#456;font-size:24px;cursor:pointer;line-height:1;padding:4px;}
+.i-em{font-size:34px;margin-bottom:10px;}
+.i-tit{font-size:17px;font-weight:300;letter-spacing:2px;margin-bottom:3px;}
+.i-tag{font-size:8px;letter-spacing:3px;color:#456;margin-bottom:18px;text-transform:uppercase;}
+.i-bod{color:#9ab0c4;font-size:12.5px;line-height:1.8;font-weight:300;}
+.i-bod b{color:#d8e8f4;}
+.i-bod i{color:#5ad1d1;font-style:italic;}
+.i-btns{margin-top:22px;display:flex;gap:8px;}
+.ibtn{flex:1;height:38px;border-radius:8px;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;background:transparent;}
+
+/* MODAL */
+#ov{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#ov.open{display:flex;}
+#modal{width:min(410px,96vw);max-height:86vh;overflow-y:auto;background:#080c12;border:1px solid #1a2733;border-radius:16px;padding:20px;color:#c0d0e0;}
+.m-h{font-size:15px;font-weight:300;letter-spacing:3px;margin-bottom:18px;text-transform:uppercase;}
+.ml{font-size:7.5px;letter-spacing:2px;color:#3a5060;margin:11px 0 4px;text-transform:uppercase;display:block;}
+.mi{width:100%;background:#030508;border:1px solid #1a2733;border-radius:8px;color:#c0d0e0;padding:9px 11px;font-family:inherit;font-size:13px;-webkit-appearance:none;outline:none;}
+.mi:focus{border-color:#5ad1d1;}
+textarea.mi{resize:vertical;min-height:72px;}
+.tg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:2px;}
+.to{padding:8px 2px;text-align:center;font-size:7.5px;border-radius:7px;cursor:pointer;letter-spacing:1px;border:1px solid #1a2733;color:#456;transition:all .15s;}
+.cg{display:flex;flex-wrap:wrap;gap:5px;max-height:95px;overflow-y:auto;padding:7px;background:#030508;border-radius:8px;border:1px solid #1a2733;}
+.cc{font-size:8.5px;padding:3px 7px;border-radius:9px;cursor:pointer;border:1px solid #1a2733;color:#789;transition:all .12s;}
+.m-acts{margin-top:18px;display:flex;gap:8px;justify-content:flex-end;}
+
+/* ZOOM CONTROLS */
+#zc{position:fixed;bottom:20px;right:14px;z-index:900;display:flex;flex-direction:column;gap:6px;}
+#zc button{width:42px;height:42px;border-radius:10px;font-size:18px;border:1px solid #1a2733;background:rgba(8,12,18,.88);color:#5ad1d1;cursor:pointer;}
+#zc button:active{background:#0a1420;}
+
+#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#2a3a4a;font-size:8px;letter-spacing:2px;z-index:800;pointer-events:none;white-space:nowrap;}
+#sv{position:fixed;bottom:20px;left:14px;color:#80ed99;font-size:8px;letter-spacing:2px;z-index:800;opacity:0;transition:opacity .3s;}
+#sv.show{opacity:1;}
+
+@keyframes nodeIn{from{opacity:0;transform:scale(.2);}to{opacity:1;transform:scale(1);}}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="bg"></div>
+<div id="stars"></div>
+
+<div id="topbar">
+  <div class="t-logo"><div class="t-logo-main">La Plateforme</div><div class="t-logo-sub">POLITIQUE · SAISON 1</div></div>
+  <button class="tbtn" style="background:#e8c547;color:#000;font-weight:700;" onclick="openModal()">+ Carte</button>
+  <button class="tbtn" style="background:rgba(90,209,209,.12);color:#5ad1d1;border:1px solid #5ad1d144;" onclick="toggleFP()">Calques</button>
+  <button class="tbtn" style="background:rgba(255,255,255,.06);color:#888;" onclick="exportD()">⤓</button>
+  <button class="tbtn" style="background:rgba(255,255,255,.06);color:#888;" onclick="importD()">⤒</button>
+</div>
+
+<div id="fp">
+  <div class="fp-h">CALQUES</div>
+  <div id="fp-rows"></div>
+  <div class="fp-div"></div>
+  <div class="fp-row" onclick="resetView()" style="justify-content:center;color:#5ad1d1;font-size:9px;letter-spacing:2px;">⌂ RECENTRER</div>
+</div>
+
+<div id="canvas">
+  <div id="world">
+    <svg id="svg-layer"></svg>
+  </div>
+</div>
+
+<div id="info">
+  <div class="i-x" onclick="closeInfo()">✕</div>
+  <div class="i-em" id="i-em"></div>
+  <div class="i-tit" id="i-tit"></div>
+  <div class="i-tag" id="i-tag"></div>
+  <div class="i-bod" id="i-bod"></div>
+  <div class="i-btns">
+    <button class="ibtn" id="i-edit">✎ Modifier</button>
+    <button class="ibtn" id="i-del" style="border:1px solid #ff6b6b44;color:#ff6b6b;">🗑</button>
+  </div>
+</div>
+
+<div id="ov" onclick="if(event.target.id==='ov')closeModal()">
+  <div id="modal">
+    <div class="m-h" id="m-h">Nouvelle carte</div>
+    <span class="ml">Type</span><div class="tg" id="tg"></div>
+    <span class="ml">Titre</span><input class="mi" id="f-t" placeholder="NOM">
+    <span class="ml">Sous-titre</span><input class="mi" id="f-s" placeholder="Rôle court">
+    <span class="ml">Emoji</span><input class="mi" id="f-p" placeholder="🎬" maxlength="4">
+    <span class="ml">Description</span><textarea class="mi" id="f-i" rows="4"></textarea>
+    <span class="ml">Relier à</span><div class="cg" id="cg"></div>
+    <div class="m-acts">
+      <button class="tbtn" style="background:rgba(255,255,255,.06);color:#888;border:1px solid #1a2733;" onclick="closeModal()">Annuler</button>
+      <button class="tbtn" id="m-sv" style="font-weight:700;" onclick="saveCard()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="zc">
+  <button onclick="doZoom(1.25)">＋</button>
+  <button onclick="doZoom(0.8)">－</button>
+</div>
+<div id="hint">TOUCHER UN NŒUD · PINCER POUR ZOOMER · GLISSER POUR NAVIGUER</div>
+<div id="sv">✓ SAUVEGARDÉ</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const TC={perso:'#e8c547',univers:'#5ad1d1',mecanique:'#c77dff',arc:'#80ed99',event:'#ff6b6b'};
+const TL={perso:'PERSONNAGE',univers:'UNIVERS',mecanique:'MÉCANIQUE',arc:'ARC',event:'ÉVÉNEMENT'};
+const TE={perso:'👤',univers:'🎬',mecanique:'⚙️',arc:'📖',event:'⚡'};
+const SK='pp_dark_v3';
+
+// ═══════════════════════════════════════════════
+// DONNÉES
+// ═══════════════════════════════════════════════
+const IC=[
+{id:'melenchon',type:'perso',x:980,y:560,photo:'🔴',title:'MÉLENCHON',sub:'Le manipulateur',info:'<b>Purgatoire :</b> Cellule avec Macron. Manipule Macron pour les olives de Jésus.<br><br><b>Vikings :</b> Comte Odo. Scandales au Maghreb → invasion sarrasine.<br><br><b>Trois Frères :</b> Père Rougemont.'},
+{id:'macron',type:'perso',x:1320,y:560,photo:'🔵',title:'MACRON',sub:'Sait mais ne peut agir',info:'<b>Purgatoire :</b> Plat = mouchoir avec CD.<br><br><b>Ozark :</b> Marty Byrde. Blanchit l\'argent de Sinwar.<br><br><b>Fin S1 :</b> accident, disparaît. S2 = Rick Grimes.'},
+{id:'brigitte',type:'perso',x:1320,y:820,photo:'💛',title:'BRIGITTE',sub:'Wendy · Sait tout',info:'<b>Ozark :</b> Wendy. Révèle tout à Borne.<br><br><b>Fin :</b> meurt dans l\'accident.'},
+{id:'jesus',type:'perso',x:980,y:820,photo:'✝️',title:'JÉSUS',sub:"L'aveugle",info:'<b>Purgatoire :</b> Là volontairement pour torturer ceux qui le méritent.<br><br><b>Twist Talmud :</b> <i>"La marmite c\'est ma rage, les excréments c\'est vous."</i>'},
+{id:'sinwar',type:'perso',x:1660,y:560,photo:'🟠',title:'SINWAR',sub:'Faraz · Mounir · Del',info:'Road trip Gaza→France. Infecte Capri-Sun au Captagon → zombies.<br><br><b>Mort :</b> blague "gwihr" → fusillé par les Snells.'},
+{id:'alice',type:'perso',x:620,y:760,photo:'🟡',title:'ALICE CORDIER',sub:'Seule lucide',info:'<b>The Capture :</b> enquêtrice.<br><br><b>Vikings :</b> fille du roi, sauve Poitiers.<br><br><b>Adolescence :</b> patient zéro du virus.'},
+{id:'borne',type:'perso',x:620,y:1020,photo:'🟣',title:'BORNE',sub:'Taupe du bon côté',info:'Vape permanente. Vulgaire. Musiques improbables.<br><br>Taupe infiltrée dans l\'état profond. WD S2 = Carol.'},
+{id:'retailleau',type:'perso',x:280,y:620,photo:'⚫',title:'RETAILLEAU',sub:'Meurt en moto',info:'The Agency — meurt en moto. Déclenche l\'enquête d\'Alice.'},
+{id:'chikirrou',type:'perso',x:980,y:1060,photo:'⚫',title:'CHIKIRROU',sub:'Fidèle de Mélenchon',info:'Vikings : 2e valet. Trois Frères : Mme Rougemont.'},
+{id:'bouli',type:'perso',x:2000,y:560,photo:'🐧',title:'BOULI+VANCE',sub:'CIA · Animation',info:'David Vance : frère CIA. Bouli : avatar animé du compte X. Débarquement Tenet.'},
+{id:'u-plateforme',type:'univers',x:980,y:300,photo:'📦',title:'LA PLATEFORME',sub:'Le Purgatoire',info:'Les âmes ignorent qu\'elles sont mortes. 3 issues : Paradis, Enfer, Revivre.'},
+{id:'u-vikings',type:'univers',x:620,y:420,photo:'⚔️',title:'VIKINGS',sub:'Moyen Âge',info:'Invasion sarrasine. Charles Martel = Rollo.'},
+{id:'u-ozark',type:'univers',x:1480,y:760,photo:'💰',title:'OZARK',sub:'Macron=Marty',info:'Macron blanchit l\'argent. Del tue Rima & Portès. Accident final.'},
+{id:'u-capture',type:'univers',x:380,y:900,photo:'🔍',title:'THE CAPTURE',sub:'Alice enquête',info:'Alice et Borne remontent le fil depuis Retailleau.'},
+{id:'u-tehran',type:'univers',x:1880,y:800,photo:'🇮🇷',title:'TÉHÉRAN',sub:'Sinwar=Faraz',info:'Sinwar joue Faraz en Iran.'},
+{id:'u-valide',type:'univers',x:1880,y:960,photo:'🏙️',title:'VALIDE',sub:'Sinwar=Mounir',info:'Sinwar en banlieue. Cherche Macron.'},
+{id:'u-fourions',type:'univers',x:380,y:1140,photo:'💥',title:'FOUR LIONS',sub:'LFI à Londres',info:'Attentat raté. Flashback de Mélenchon.'},
+{id:'u-adolescence',type:'univers',x:260,y:900,photo:'👦',title:'ADOLESCENCE',sub:'Premier signe virus',info:'Un jeune répète en boucle. Patient zéro.'},
+{id:'u-dark',type:'univers',x:1660,y:940,photo:'🪨',title:'DARK',sub:'Meurtre enfant',info:'Sinwar tue un enfant à la pierre. Identité révélée tard.'},
+{id:'u-squidgame',type:'univers',x:2240,y:820,photo:'🦑',title:'SQUID GAME',sub:'Masques Ciboulette',info:'French Arabi kidnappés. Gardes masques Ciboulette.'},
+{id:'u-tenet',type:'univers',x:2240,y:640,photo:'⏪',title:'TENET',sub:'Débarquement Bouli',info:'Débarquement par bateau, algorithme inversé.'},
+{id:'u-theagency',type:'univers',x:280,y:460,photo:'🏍️',title:'THE AGENCY',sub:'Retailleau meurt',info:'Le perso survit dans la série — ici il meurt.'},
+{id:'u-troisfreres',type:'univers',x:980,y:1300,photo:'😂',title:'TROIS FRÈRES',sub:'Flashback comique',info:'Délogu rejette Manon Aubry. Boyard se plaint de son poste.'},
+{id:'u-athena',type:'univers',x:2040,y:960,photo:'🔥',title:'ATHENA',sub:'Guerre urbaine',info:'Guerre French Arabi vs Bouli.'},
+{id:'u-walkingdead',type:'univers',x:1420,y:1080,photo:'🧟',title:'WALKING DEAD',sub:'Macron=Rick (S2)',info:'Macron en Rick Grimes. Borne=Carol, Alice=Maggie. S2.'},
+{id:'ev-retailleau',type:'event',x:280,y:300,photo:'💀',title:'MORT RETAILLEAU',sub:'Ep1',info:'Meurt en moto. Déclenche l\'enquête.'},
+{id:'ev-enfant',type:'event',x:1660,y:320,photo:'🪨',title:'MEURTRE ENFANT',sub:'Scène Dark',info:'Enfant frappé à la pierre. Sinwar, révélé tard.'},
+{id:'ev-poitiers',type:'event',x:620,y:280,photo:'⚔️',title:'POITIERS',sub:'Alice condamne Mélenchon',info:'Alice sauve Poitiers. Condamne Mélenchon. Ouvre Ep3.'},
+{id:'ev-ozark',type:'event',x:1480,y:440,photo:'🔫',title:'RÉUNION OZARK',sub:'Del tue Rima+Portès',info:'Del abat Rima Hassan & Thomas Portès. Macron piégé.'},
+{id:'ev-ciboulette',type:'event',x:2240,y:440,photo:'☃️',title:'CIBOULETTE',sub:'Déclenche la guerre',info:'French Arabi détruit Ciboulette. Opération CIA.'},
+{id:'ev-snells',type:'event',x:1660,y:760,photo:'🚜',title:'MORT SINWAR',sub:'"Gwihr"→fusillé',info:'Sinwar lâche "gwihr" → fusillé par les Snells.'},
+{id:'ev-accident',type:'event',x:1420,y:940,photo:'🚗',title:'ACCIDENT',sub:'Fin S1',info:'Camion percute. Brigitte meurt, Macron disparaît.'},
+{id:'ev-caprisun',type:'event',x:2000,y:320,photo:'🧃',title:'CAPRI-SUN',sub:'Virus zombie',info:'Sinwar infecte les Capri-Sun. Virus → zombies.'},
+{id:'m-olives',type:'mecanique',x:1140,y:690,photo:'🫒',title:'LES OLIVES',sub:'Mélenchon manipule',info:'Les olives sont à Jésus, mort à qui y touche.'},
+{id:'m-mouchoir',type:'mecanique',x:1320,y:400,photo:'🧻',title:'MOUCHOIR CD',sub:'Plat de Macron',info:'Plat de Macron au purgatoire. Humiliation silencieuse.'},
+{id:'m-talmud',type:'mecanique',x:820,y:880,photo:'📖',title:'TWIST TALMUD',sub:'Marmite=rage',info:'Jésus sourit. "La phrase était vraie, vous l\'avez lue à l\'envers."'},
+{id:'m-jt',type:'mecanique',x:620,y:1220,photo:'📺',title:'FAUX JT',sub:'News absurdes',info:'Faux JT intercalés. "Sinwar au Printemps avec 4 sacs Sandro."'},
+{id:'m-roadtrip',type:'mecanique',x:1880,y:660,photo:'🗺️',title:'ROAD TRIP',sub:'Style Pluribus',info:'Gaza→France. Décalage culturel total.'},
+];
+const ICN=[
+{f:'melenchon',t:'u-plateforme'},{f:'melenchon',t:'u-vikings'},{f:'melenchon',t:'u-troisfreres'},
+{f:'macron',t:'u-plateforme'},{f:'macron',t:'u-ozark'},{f:'macron',t:'u-vikings'},
+{f:'brigitte',t:'u-ozark'},{f:'jesus',t:'u-plateforme'},
+{f:'sinwar',t:'u-tehran'},{f:'sinwar',t:'u-valide'},{f:'sinwar',t:'u-ozark'},{f:'sinwar',t:'u-dark'},
+{f:'alice',t:'u-capture'},{f:'alice',t:'u-vikings'},{f:'alice',t:'u-adolescence'},
+{f:'borne',t:'u-capture'},{f:'borne',t:'u-ozark'},{f:'retailleau',t:'u-theagency'},
+{f:'bouli',t:'u-tenet'},{f:'bouli',t:'u-squidgame'},{f:'bouli',t:'u-athena'},
+{f:'ev-retailleau',t:'retailleau'},{f:'ev-poitiers',t:'alice'},{f:'ev-poitiers',t:'melenchon'},
+{f:'ev-ozark',t:'sinwar'},{f:'ev-ozark',t:'macron'},{f:'ev-ciboulette',t:'bouli'},
+{f:'ev-snells',t:'sinwar'},{f:'ev-caprisun',t:'sinwar'},
+{f:'ev-accident',t:'macron'},{f:'ev-accident',t:'brigitte'},
+{f:'m-olives',t:'jesus'},{f:'m-olives',t:'melenchon'},{f:'m-mouchoir',t:'macron'},
+{f:'m-talmud',t:'jesus'},{f:'m-roadtrip',t:'sinwar'},{f:'ev-enfant',t:'u-dark'},
+{f:'brigitte',t:'borne',d:1},{f:'borne',t:'alice',d:1},
+{f:'u-walkingdead',t:'macron',d:1},{f:'ev-caprisun',t:'u-walkingdead',d:1},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let cards,conns;
+let tx=0,ty=0,sc=0.6; // transform: translate + scale
+let filters={perso:1,univers:1,mecanique:1,arc:1,event:1};
+let focusId=null,activeId=null;
+let editId=null,selType='perso',selConns=new Set();
+let booted=false;
+
+function load(){
+  try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);if(p.cards&&p.conns){cards=p.cards;conns=p.conns;return;}}}catch(e){}
+  cards=JSON.parse(JSON.stringify(IC));
+  conns=JSON.parse(JSON.stringify(ICN));
+}
+let svt;
+function save(){
+  clearTimeout(svt);svt=setTimeout(()=>{
+    try{localStorage.setItem(SK,JSON.stringify({cards,conns}));}catch(e){}
+    const el=document.getElementById('sv');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1400);
+  },500);
+}
+
+const gc=id=>cards.find(c=>c.id===id);
+const ctr=c=>({x:c.x+65,y:c.y+65});
+const W=document.getElementById('world');
+const SVG=document.getElementById('svg-layer');
+
+function cset(id){const s=new Set();conns.forEach(cn=>{if(cn.f===id)s.add(cn.t);if(cn.t===id)s.add(cn.f);});return s;}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function applyT(){W.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;}
+
+function render(){renderSVG();renderNodes();renderFP();}
+
+function renderNodes(){
+  document.querySelectorAll('.node').forEach(e=>e.remove());
+  const fs=focusId?cset(focusId):null;
+  cards.forEach((c,i)=>{
+    if(!filters[c.type])return;
+    const col=TC[c.type];
+    const isFocus=focusId===c.id;
+    const dimmed=fs&&!isFocus&&!fs.has(c.id);
+    const sz=isFocus?76:60,em=isFocus?30:24;
+    const n=document.createElement('div');
+    n.className='node'+(isFocus?' focused':'');
+    n.id='n-'+c.id;
+    n.style.cssText=`left:${c.x}px;top:${c.y}px;opacity:${dimmed?.14:1};transition:opacity .3s;z-index:${isFocus?50:10};${!booted?`animation:nodeIn .5s ease ${i*.025}s both`:''}`;
+    n.innerHTML=`<div class="orb" style="width:${sz}px;height:${sz}px;font-size:${em}px;
+      background:radial-gradient(circle at 35% 30%,${col}30,rgba(2,4,8,.92) 68%);
+      border:${isFocus?2:1.5}px solid ${col};
+      box-shadow:${isFocus?`0 0 24px ${col},0 0 56px ${col}55,inset 0 0 16px ${col}33`:`0 0 10px ${col}44,inset 0 0 8px ${col}18`};
+      transition:all .3s cubic-bezier(.2,.8,.2,1);">
+      ${c.photo||TE[c.type]}</div>
+    <div class="n-label">${c.title}</div>
+    ${isFocus&&c.sub?`<div class="n-sub" style="color:${col}">${c.sub}</div>`:''}`;
+    enableNode(n,c);
+    W.appendChild(n);
+  });
+  // update world size
+  const maxX=Math.max(...cards.map(c=>c.x+200),3200);
+  const maxY=Math.max(...cards.map(c=>c.y+200),2400);
+  W.style.width=maxX+'px';W.style.height=maxY+'px';
+  SVG.setAttribute('width',maxX);SVG.setAttribute('height',maxY);
+}
+
+function renderSVG(){
+  const fs=focusId?cset(focusId):null;
+  let h=`<defs><filter id="gl" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+  conns.forEach((cn,i)=>{
+    const a=gc(cn.f),b=gc(cn.t);
+    if(!a||!b||!filters[a.type]||!filters[b.type])return;
+    const p1=ctr(a),p2=ctr(b);
+    const isF=focusId&&(cn.f===focusId||cn.t===focusId);
+    const dim=focusId&&!isF;
+    const col=cn.d?'#5ad1d1':'#2a4a62';
+    const scol=isF?(cn.d?'#7defff':'#e8c547'):col;
+    const op=dim?.07:(isF?.92:.3);
+    const sw=isF?1.8:.8;
+    h+=`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${scol}" stroke-width="${sw}" stroke-opacity="${op}" ${cn.d?'stroke-dasharray="5,4"':''} ${isF?'filter="url(#gl)"':''} style="transition:all .3s"/>`;
+    if(isF){h+=`<circle r="2.2" fill="#fff" opacity=".9" filter="url(#gl)"><animateMotion dur="1.4s" repeatCount="indefinite" path="M${p1.x},${p1.y} L${p2.x},${p2.y}"/></circle>`;}
+  });
+  SVG.innerHTML=h;
+}
+
+function renderFP(){
+  const box=document.getElementById('fp-rows');box.innerHTML='';
+  Object.keys(TC).forEach(t=>{
+    const on=filters[t];
+    const row=document.createElement('div');
+    row.className='fp-row';row.style.opacity=on?1:.3;
+    row.onclick=()=>{filters[t]=on?0:1;render();};
+    row.innerHTML=`<div class="fp-dot" style="background:${TC[t]};box-shadow:${on?'0 0 7px '+TC[t]:'none'}"></div><span class="fp-lbl">${TL[t]}</span><span class="fp-cnt">${cards.filter(c=>c.type===t).length}</span>`;
+    box.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// NODE INTERACTION — touch friendly
+// ═══════════════════════════════════════════════
+function enableNode(el,card){
+  let drag=false,moved=false,sx,sy,cx,cy,pid;
+  el.addEventListener('pointerdown',e=>{
+    e.stopPropagation();
+    drag=true;moved=false;pid=e.pointerId;
+    sx=e.clientX;sy=e.clientY;cx=card.x;cy=card.y;
+    el.setPointerCapture(pid);
+  },{passive:true});
+  el.addEventListener('pointermove',e=>{
+    if(!drag||e.pointerId!==pid)return;
+    e.stopPropagation();
+    const dx=(e.clientX-sx)/sc,dy=(e.clientY-sy)/sc;
+    if(Math.abs(dx)>5||Math.abs(dy)>5)moved=true;
+    if(moved){card.x=cx+dx;card.y=cy+dy;el.style.left=card.x+'px';el.style.top=card.y+'px';renderSVG();}
+  },{passive:true});
+  el.addEventListener('pointerup',e=>{
+    if(e.pointerId!==pid)return;
+    e.stopPropagation();drag=false;
+    if(!moved){
+      if(focusId===card.id){showInfo(card);}
+      else{focusId=card.id;render();}
+    }else{save();}
+  },{passive:true});
+}
+
+// ═══════════════════════════════════════════════
+// CANVAS PAN + PINCH — full custom, no browser interference
+// ═══════════════════════════════════════════════
+const canvas=document.getElementById('canvas');
+const pointers=new Map(); // pointerId → {x,y}
+
+function getPinchDist(){
+  const pts=[...pointers.values()];
+  if(pts.length<2)return null;
+  const dx=pts[0].x-pts[1].x,dy=pts[0].y-pts[1].y;
+  return Math.hypot(dx,dy);
+}
+function getPinchCenter(){
+  const pts=[...pointers.values()];
+  return{x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+}
+
+let lastPinchDist=null,lastPinchCenter=null;
+let panStart=null;
+
+canvas.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.node')||e.target.closest('#fp')||e.target.closest('#info'))return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  canvas.setPointerCapture(e.pointerId);
+  if(pointers.size===1){
+    panStart={x:e.clientX-tx,y:e.clientY-ty};
+    lastPinchDist=null;
+  }
+  if(pointers.size===2){
+    panStart=null;
+    lastPinchDist=getPinchDist();
+    lastPinchCenter=getPinchCenter();
+  }
+},{passive:true});
+
+canvas.addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId))return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  if(pointers.size===1&&panStart){
+    // PAN
+    tx=e.clientX-panStart.x;
+    ty=e.clientY-panStart.y;
+    applyT();
+  } else if(pointers.size===2&&lastPinchDist!==null){
+    // PINCH ZOOM
+    const newDist=getPinchDist();
+    const center=getPinchCenter();
+    const ratio=newDist/lastPinchDist;
+
+    // world coords of pinch center before zoom
+    const rect=canvas.getBoundingClientRect();
+    const cx=center.x-rect.left;
+    const cy=center.y-rect.top;
+    const wx=(cx-tx)/sc;
+    const wy=(cy-ty)/sc;
+
+    const newSc=Math.min(Math.max(sc*ratio,.18),2.5);
+    tx=cx-wx*newSc;
+    ty=cy-wy*newSc;
+    sc=newSc;
+
+    // also pan with pinch center movement
+    if(lastPinchCenter){
+      tx+=center.x-lastPinchCenter.x;
+      ty+=center.y-lastPinchCenter.y;
+    }
+
+    lastPinchDist=newDist;
+    lastPinchCenter=center;
+    applyT();
+  }
+},{passive:true});
+
+canvas.addEventListener('pointerup',e=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size===0){panStart=null;lastPinchDist=null;lastPinchCenter=null;}
+  if(pointers.size===1){
+    const remaining=[...pointers.entries()][0];
+    panStart={x:remaining[1].x-tx,y:remaining[1].y-ty};
+    lastPinchDist=null;
+  }
+},{passive:true});
+
+canvas.addEventListener('pointercancel',e=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size===0){panStart=null;lastPinchDist=null;}
+},{passive:true});
+
+// Wheel zoom (pour desktop)
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  const wx=(cx-tx)/sc,wy=(cy-ty)/sc;
+  sc=Math.min(Math.max(sc*(e.deltaY>0?.9:1.1),.18),2.5);
+  tx=cx-wx*sc;ty=cy-wy*sc;
+  applyT();
+},{passive:false});
+
+function doZoom(r){
+  const cx=canvas.clientWidth/2,cy=canvas.clientHeight/2;
+  const wx=(cx-tx)/sc,wy=(cy-ty)/sc;
+  sc=Math.min(Math.max(sc*r,.18),2.5);
+  tx=cx-wx*sc;ty=cy-wy*sc;
+  applyT();
+}
+function resetView(){sc=0.6;tx=-340;ty=-120;applyT();}
+
+// Dismiss focus by tapping canvas
+canvas.addEventListener('click',e=>{
+  if(e.target.closest('.node')||e.target.closest('#info'))return;
+  focusId=null;closeInfo();render();
+});
+
+// ═══════════════════════════════════════════════
+// INFO PANEL
+// ═══════════════════════════════════════════════
+function showInfo(card){
+  activeId=card.id;
+  document.getElementById('i-em').textContent=card.photo||TE[card.type];
+  document.getElementById('i-tit').textContent=card.title;
+  document.getElementById('i-tit').style.color=TC[card.type];
+  document.getElementById('i-tag').textContent=TL[card.type];
+  document.getElementById('i-bod').innerHTML=card.info||'<i>Pas de description.</i>';
+  const eb=document.getElementById('i-edit');
+  eb.style.cssText=`border:1px solid ${TC[card.type]}55;color:${TC[card.type]};`;
+  eb.onclick=()=>{closeInfo();openModal(card.id);};
+  document.getElementById('i-del').onclick=()=>delCard(card.id);
+  document.getElementById('info').classList.add('open');
+}
+function closeInfo(){document.getElementById('info').classList.remove('open');if(focusId){focusId=null;render();}}
+
+// ═══════════════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════════════
+function toggleFP(){document.getElementById('fp').classList.toggle('show');}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openModal(id=null){
+  editId=id;selConns=new Set();
+  if(id){
+    const c=gc(id);selType=c.type;
+    document.getElementById('f-t').value=c.title;
+    document.getElementById('f-s').value=c.sub||'';
+    document.getElementById('f-p').value=c.photo||'';
+    document.getElementById('f-i').value=(c.info||'').replace(/<br><br>/g,'\n\n').replace(/<br>/g,'\n').replace(/<\/?[bi]>/g,'');
+    conns.forEach(cn=>{if(cn.f===id)selConns.add(cn.t);if(cn.t===id)selConns.add(cn.f);});
+    document.getElementById('m-h').textContent='MODIFIER';
+  }else{
+    selType='perso';
+    ['f-t','f-s','f-p','f-i'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('m-h').textContent='NOUVELLE CARTE';
+  }
+  buildTG();buildCG();
+  document.getElementById('m-h').style.color=TC[selType];
+  document.getElementById('m-sv').style.background=TC[selType];
+  document.getElementById('m-sv').style.color='#000';
+  document.getElementById('ov').classList.add('open');
+}
+function buildTG(){
+  const g=document.getElementById('tg');g.innerHTML='';
+  Object.keys(TC).forEach(t=>{
+    const d=document.createElement('div');d.className='to';
+    d.style.cssText=selType===t?`border-color:${TC[t]};color:${TC[t]};background:${TC[t]}1a;`:'';
+    d.textContent=TL[t].slice(0,4);
+    d.onclick=()=>{selType=t;buildTG();document.getElementById('m-h').style.color=TC[t];document.getElementById('m-sv').style.background=TC[t];};
+    g.appendChild(d);
+  });
+}
+function buildCG(){
+  const g=document.getElementById('cg');g.innerHTML='';
+  cards.filter(c=>c.id!==editId).forEach(c=>{
+    const d=document.createElement('div');d.className='cc';
+    if(selConns.has(c.id))d.style.cssText=`border-color:${TC[c.type]};color:${TC[c.type]};background:${TC[c.type]}1a;`;
+    d.textContent=c.title;
+    d.onclick=()=>{selConns.has(c.id)?selConns.delete(c.id):selConns.add(c.id);buildCG();};
+    g.appendChild(d);
+  });
+}
+function closeModal(){document.getElementById('ov').classList.remove('open');}
+function saveCard(){
+  const title=document.getElementById('f-t').value.trim();if(!title)return;
+  const sub=document.getElementById('f-s').value.trim();
+  const photo=document.getElementById('f-p').value.trim();
+  const info=document.getElementById('f-i').value.trim().replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  if(editId){
+    const c=gc(editId);Object.assign(c,{type:selType,title,sub,photo,info});
+    conns=conns.filter(cn=>cn.f!==editId&&cn.t!==editId);
+    selConns.forEach(t=>conns.push({f:editId,t}));
+  }else{
+    const id='c'+Date.now();
+    const nx=(-tx+canvas.clientWidth/2)/sc-65,ny=(-ty+canvas.clientHeight/2)/sc-65;
+    cards.push({id,type:selType,x:nx,y:ny,photo,title,sub,info});
+    selConns.forEach(t=>conns.push({f:id,t}));
+  }
+  closeModal();save();render();
+}
+function delCard(id){
+  if(!confirm('Supprimer ?'))return;
+  cards=cards.filter(c=>c.id!==id);conns=conns.filter(cn=>cn.f!==id&&cn.t!==id);
+  closeInfo();save();render();
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════
+function exportD(){const b=new Blob([JSON.stringify({cards,conns},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='plateforme.json';a.click();}
+function importD(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.cards)cards=d.cards;if(d.conns)conns=d.conns;save();render();}catch(e){alert('Fichier invalide.');}};r.readAsText(f);};i.click();}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+load();
+// start centered
+tx=-340;ty=-120;
+applyT();render();
+setTimeout(()=>{booted=true;},1000);
+</script>
+</body>
+</html>
